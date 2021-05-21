@@ -21,7 +21,7 @@ fn input_link() -> String {
     buffer.trim().into()
 }
 
-//#[allow(unused_parens)]
+#[allow(unused_assignments)]
 fn input_delay() -> i32 {
     let mut buffer = String::new();
     let mut delay = 0;
@@ -43,6 +43,7 @@ fn input_delay() -> i32 {
     delay
 }
 
+#[allow(unused_assignments)]
 fn input_random_delay() -> (i32, i32) {
     let mut buffer = String::new();
     let mut random_delay = (0, 0);
@@ -72,11 +73,12 @@ fn input_random_delay() -> (i32, i32) {
 
 fn jmg(
     link: String,
-    delay: i32,
-    random_delay: (i32, i32),
+    _delay: i32,
+    _random_delay: (i32, i32),
 ) -> Result<(), Box<dyn std::error::Error>> {
     let browser = Browser::default()?;
     let tab = browser.wait_for_initial_tab()?;
+    tab.navigate_to(&link)?;
 
     Ok(())
 }
@@ -86,7 +88,12 @@ fn main() {
     let delay = input_delay();
     let random_delay = input_random_delay();
 
-    println!("{}, {}, {:?}", link, delay, random_delay);
-
-    jmg(link, delay, random_delay).ok();
+    match jmg(link, delay, random_delay) {
+        Ok(()) => {
+            println!("@@ 작업 성공");
+        }
+        Err(error) => {
+            println!("@@ 실패, {:?}", error);
+        }
+    }
 }
