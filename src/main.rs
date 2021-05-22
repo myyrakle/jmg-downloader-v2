@@ -1,6 +1,33 @@
-use headless_chrome::Browser;
+use std::fs::{File, OpenOptions};
+use std::io::prelude::*;
 use std::io::{self};
+use std::path::Path;
+
+use headless_chrome::{Browser, Element};
 use url::Url;
+
+fn get_content(element: Element) -> Option<String> {
+    let text = element
+        .call_js_fn("function() { return this.textContent;}", false)
+        .ok()?
+        .value?
+        .as_str()?
+        .to_string();
+
+    Some(text)
+}
+
+fn file_write(filename: String, content: String) -> Result<(), Box<dyn std::error::Error>> {
+    if Path::new(&filename).exists() == false {
+        File::create(&filename)?;
+    }
+
+    let mut file = OpenOptions::new().write(true).append(true).open(filename)?;
+
+    writeln!(file, "{}", content)?;
+
+    Ok(())
+}
 
 fn input_link() -> String {
     let mut buffer = String::new();
@@ -14,39 +41,29 @@ fn input_link() -> String {
             println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
             continue;
         } else {
-            break;
+            break buffer.trim().into();
         }
     }
-
-    buffer.trim().into()
 }
 
-#[allow(unused_assignments)]
 fn input_delay() -> i32 {
     let mut buffer = String::new();
-    let mut delay = 0;
-
     loop {
         println!("## 반복 딜레이(초 단위): ");
         if io::stdin().read_line(&mut buffer).is_err() {
             println!("!! 입력 오류입니다. 다시 입력해주세요.");
             continue;
         } else if let Ok(num) = buffer.trim().parse::<i32>() {
-            delay = num;
-            break;
+            break num;
         } else {
             println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
             continue;
         }
     }
-
-    delay
 }
 
-#[allow(unused_assignments)]
 fn input_random_delay() -> (i32, i32) {
     let mut buffer = String::new();
-    let mut random_delay = (0, 0);
 
     loop {
         println!("## 추가 랜덤 딜레이(초 단위). 입력 예시 5 10 : ");
@@ -58,8 +75,7 @@ fn input_random_delay() -> (i32, i32) {
         let mut parts = buffer.trim().split_whitespace().map(|s| s.parse::<i32>());
         match (parts.next(), parts.next()) {
             (Some(Ok(l)), Some(Ok(r))) => {
-                random_delay = (l, r);
-                break;
+                break (l, r);
             }
             _ => {
                 println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
@@ -67,8 +83,6 @@ fn input_random_delay() -> (i32, i32) {
             }
         }
     }
-
-    random_delay
 }
 
 fn jmg(
@@ -78,7 +92,34 @@ fn jmg(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let browser = Browser::default()?;
     let tab = browser.wait_for_initial_tab()?;
-    tab.navigate_to(&link)?;
+    //tab.navigate_to(&link)?;
+    tab.navigate_to(
+        "https://docs.rs/headless_chrome/0.9.0/headless_chrome/browser/tab/struct.Tab.html",
+    )?;
+    let element = tab.wait_for_element("#methods")?;
+    let foo = element.call_js_fn("function() { return this.textContent;}", false)?;
+    println!("{:?}", foo.value); // How can I read the HTML content from here?
+
+    // driver.findElementByCssSelector(".pc-guide-action > a").click()
+
+    // val ps = driver.findElementsByTagName("p")
+    // for(e in ps) {
+    //     text.append(e.text)
+    //     text.append("\n");
+    // }
+
+    // var title = ""
+
+    // driver.findElementByCssSelector(".viewScroll-Center").click();
+    // if(title=="") {
+    //     title = driver.findElementByCssSelector(".view-title > p").text
+
+    //     title = arrayOf("\\", "/", ":", "*", "?", "\"", "<", ">", "|").fold(title) {
+    //         title, character -> title.replace(character, " ")
+    //     }
+
+    //     println("제목은 [${title}]이요")
+    // }
 
     Ok(())
 }
