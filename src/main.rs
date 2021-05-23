@@ -6,18 +6,23 @@ use std::path::Path;
 use headless_chrome::{Browser, Element};
 use url::Url;
 
-fn get_content(element: Element) -> Option<String> {
-    let text = element
-        .call_js_fn("function() { return this.textContent;}", false)
-        .ok()?
-        .value?
-        .as_str()?
-        .to_string();
+fn get_content(element: Vec<Element>) -> Option<String> {
+    let texts: Option<Vec<String>> = element
+        .into_iter()
+        .map(|element| {
+            element
+                .call_js_fn("function() { return this.textContent;}", false)
+                .ok()
+                .map(|e| e.value)
+                .flatten()
+                .map(|e| e.as_str().unwrap_or("").to_string())
+        })
+        .collect();
 
-    Some(text)
+    Some(texts?.join("\n").to_string())
 }
 
-fn file_write(filename: String, content: String) -> Result<(), Box<dyn std::error::Error>> {
+fn file_write(filename: &str, content: String) -> Result<(), Box<dyn std::error::Error>> {
     if Path::new(&filename).exists() == false {
         File::create(&filename)?;
     }
@@ -96,11 +101,16 @@ fn jmg(
     tab.navigate_to(
         "https://docs.rs/headless_chrome/0.9.0/headless_chrome/browser/tab/struct.Tab.html",
     )?;
-    let element = tab.wait_for_element("#methods")?;
-    let foo = element.call_js_fn("function() { return this.textContent;}", false)?;
-    println!("{:?}", foo.value); // How can I read the HTML content from here?
+    tab.wait_for_element(".pc-guide-action > a")?.click()?;
 
-    // driver.findElementByCssSelector(".pc-guide-action > a").click()
+    // driver.findElementByCssSelector("").click()
+
+    let elements = tab.wait_for_elements("p")?;
+    let content = get_content(elements).unwrap();
+    let title = "foo";
+    let part = 1;
+
+    file_write("foo", content)?;
 
     // val ps = driver.findElementsByTagName("p")
     // for(e in ps) {
