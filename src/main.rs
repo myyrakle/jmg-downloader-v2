@@ -1,10 +1,23 @@
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self};
 use std::path::Path;
+use std::thread::sleep;
+use std::time::Duration;
 
-use headless_chrome::{Browser, Element};
+use headless_chrome::{Browser, Element, LaunchOptionsBuilder, Tab};
+use rand::Rng;
 use url::Url;
+
+const TEXT_SELECTOR: &str =
+    "#root > div > div > div.work-view > div.view-scroll > div.text-wrap.no-print > p";
+const NEXT_BUTTON_SELECTOR: &str =
+    "#root > div > div > div.page-wrap > div.pc-util.bottom > div.view-arrow > span, #root > div > div > div.page-wrap > div.pc-util.bottom > div.view-arrow > a";
+const NOTI_DONT_SEE_AGAIN_BUTTON: &str =
+    "#root > div > div.view-guide-wrap > div > div.pc-guide-action > a:nth-child(1)";
+const JUST_CENTOR_SELECTOR: &str =
+    "#root > div > div > div > div.view-scroll > div.viewScroll-Center";
 
 fn get_content(element: Vec<Element>) -> Option<String> {
     let texts: Option<Vec<String>> = element
@@ -90,46 +103,90 @@ fn input_random_delay() -> (i32, i32) {
     }
 }
 
+fn download(tab: &Tab) -> Result<(), Box<dyn std::error::Error>> {
+    let query: HashMap<_, _> = Url::parse(&tab.get_url())?
+        .query_pairs()
+        .into_owned()
+        .collect();
+    let part = query.get("sortno").unwrap();
+
+    println!("-- {} 화 다운로드 시작", part);
+
+    let elements = tab.wait_for_elements(TEXT_SELECTOR)?;
+    let content = get_content(elements).unwrap();
+    let title = "foo.txt";
+
+    file_write(title, content)?;
+
+    println!("-- {} 화 다운로드 완료", part);
+
+    Ok(())
+}
+
+fn has_next(tab: &Tab) -> Result<bool, Box<dyn std::error::Error>> {
+    let class = tab.find_elements(NEXT_BUTTON_SELECTOR)?[1]
+        .call_js_fn("function() { return this; }", false)?;
+
+    //println!("{:?}", class);
+
+    Ok(class.description != Some("span.disabled".into()))
+}
+
+fn do_next(tab: &Tab) -> Result<(), Box<dyn std::error::Error>> {
+    tab.find_elements(NEXT_BUTTON_SELECTOR)?[1].click()?;
+    Ok(())
+}
+
 fn jmg(
     link: String,
-    _delay: i32,
-    _random_delay: (i32, i32),
+    delay: i32,
+    random_delay: (i32, i32),
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let browser = Browser::default()?;
+    // 브라우저 생성 옵션
+    let browser_option = LaunchOptionsBuilder::default()
+        .headless(true)
+        .window_size(Some((1600, 1000)))
+        .build()?;
+
+    // 브라우저 생성
+    let browser = Browser::new(browser_option)?;
+
+    // 탭 생성
     let tab = browser.wait_for_initial_tab()?;
-    //tab.navigate_to(&link)?;
-    tab.navigate_to(
-        "https://docs.rs/headless_chrome/0.9.0/headless_chrome/browser/tab/struct.Tab.html",
-    )?;
-    tab.wait_for_element(".pc-guide-action > a")?.click()?;
 
-    // driver.findElementByCssSelector("").click()
+    // 최초 링크 이동
+    tab.navigate_to(&link)?;
 
-    let elements = tab.wait_for_elements("p")?;
-    let content = get_content(elements).unwrap();
-    let title = "foo";
-    let part = 1;
+    // 최초 접근시 알림창 닫기
+    if let Ok(button) = tab.wait_for_element(NOTI_DONT_SEE_AGAIN_BUTTON) {
+        sleep(Duration::from_millis(1500));
+        button.click()?;
+    } else {
+    }
 
-    file_write("foo", content)?;
+    sleep(Duration::from_millis(3500));
 
-    // val ps = driver.findElementsByTagName("p")
-    // for(e in ps) {
-    //     text.append(e.text)
-    //     text.append("\n");
-    // }
+    // 다음버튼 없을 경우 클릭해서 활성화
+    if let Err(_error) = tab.find_element(NEXT_BUTTON_SELECTOR) {
+        tab.wait_for_element(JUST_CENTOR_SELECTOR)?.click()?;
+    }
 
-    // var title = ""
+    //최초 다운로드
+    download(&tab)?;
 
-    // driver.findElementByCssSelector(".viewScroll-Center").click();
-    // if(title=="") {
-    //     title = driver.findElementByCssSelector(".view-title > p").text
-
-    //     title = arrayOf("\\", "/", ":", "*", "?", "\"", "<", ">", "|").fold(title) {
-    //         title, character -> title.replace(character, " ")
-    //     }
-
-    //     println("제목은 [${title}]이요")
-    // }
+    loop {
+        if has_next(&tab)? {
+            let mut rng = rand::thread_rng();
+            let second = delay + rng.gen_range(random_delay.0..random_delay.1);
+            println!("## {}초 딜레이중...", second);
+            sleep(Duration::from_secs(second as u64));
+            do_next(&tab)?;
+            download(&tab)?;
+        } else {
+            println!("@@ 다운로드 종료");
+            break;
+        }
+    }
 
     Ok(())
 }
@@ -144,7 +201,7 @@ fn main() {
             println!("@@ 작업 성공");
         }
         Err(error) => {
-            println!("@@ 실패, {:?}", error);
+            println!("@@ 실패. => {:?}", error);
         }
     }
 }
