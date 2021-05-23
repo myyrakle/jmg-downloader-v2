@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::{self};
+
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
@@ -10,14 +10,8 @@ use headless_chrome::{Browser, Element, LaunchOptionsBuilder, Tab};
 use rand::Rng;
 use url::Url;
 
-const TEXT_SELECTOR: &str =
-    "#root > div > div > div.work-view > div.view-scroll > div.text-wrap.no-print > p";
-const NEXT_BUTTON_SELECTOR: &str =
-    "#root > div > div > div.page-wrap > div.pc-util.bottom > div.view-arrow > span, #root > div > div > div.page-wrap > div.pc-util.bottom > div.view-arrow > a";
-const NOTI_DONT_SEE_AGAIN_BUTTON: &str =
-    "#root > div > div.view-guide-wrap > div > div.pc-guide-action > a:nth-child(1)";
-const JUST_CENTOR_SELECTOR: &str =
-    "#root > div > div > div > div.view-scroll > div.viewScroll-Center";
+mod lib;
+use lib::*;
 
 fn get_content(element: Vec<Element>) -> Option<String> {
     let texts: Option<Vec<String>> = element
@@ -47,62 +41,6 @@ fn file_write(filename: &str, content: String) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn input_link() -> String {
-    let mut buffer = String::new();
-
-    loop {
-        println!("## 링크: ");
-        if io::stdin().read_line(&mut buffer).is_err() {
-            println!("!! 입력 오류입니다. 다시 입력해주세요.");
-            continue;
-        } else if Url::parse(&buffer).is_err() {
-            println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
-            continue;
-        } else {
-            break buffer.trim().into();
-        }
-    }
-}
-
-fn input_delay() -> i32 {
-    let mut buffer = String::new();
-    loop {
-        println!("## 반복 딜레이(초 단위): ");
-        if io::stdin().read_line(&mut buffer).is_err() {
-            println!("!! 입력 오류입니다. 다시 입력해주세요.");
-            continue;
-        } else if let Ok(num) = buffer.trim().parse::<i32>() {
-            break num;
-        } else {
-            println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
-            continue;
-        }
-    }
-}
-
-fn input_random_delay() -> (i32, i32) {
-    let mut buffer = String::new();
-
-    loop {
-        println!("## 추가 랜덤 딜레이(초 단위). 입력 예시 5 10 : ");
-        if io::stdin().read_line(&mut buffer).is_err() {
-            println!("!! 입력 오류입니다. 다시 입력해주세요.");
-            continue;
-        }
-
-        let mut parts = buffer.trim().split_whitespace().map(|s| s.parse::<i32>());
-        match (parts.next(), parts.next()) {
-            (Some(Ok(l)), Some(Ok(r))) => {
-                break (l, r);
-            }
-            _ => {
-                println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
-                continue;
-            }
-        }
-    }
-}
-
 fn download(tab: &Tab) -> Result<(), Box<dyn std::error::Error>> {
     let query: HashMap<_, _> = Url::parse(&tab.get_url())?
         .query_pairs()
@@ -126,8 +64,6 @@ fn download(tab: &Tab) -> Result<(), Box<dyn std::error::Error>> {
 fn has_next(tab: &Tab) -> Result<bool, Box<dyn std::error::Error>> {
     let class = tab.find_elements(NEXT_BUTTON_SELECTOR)?[1]
         .call_js_fn("function() { return this; }", false)?;
-
-    //println!("{:?}", class);
 
     Ok(class.description != Some("span.disabled".into()))
 }
@@ -158,7 +94,7 @@ fn jmg(
     tab.navigate_to(&link)?;
 
     // 최초 접근시 알림창 닫기
-    if let Ok(button) = tab.wait_for_element(NOTI_DONT_SEE_AGAIN_BUTTON) {
+    if let Ok(button) = tab.wait_for_element(DONT_SEE_AGAIN_BUTTON_SELECTOR) {
         sleep(Duration::from_millis(1500));
         button.click()?;
     } else {
