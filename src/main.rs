@@ -69,7 +69,7 @@ fn has_next(tab: &Tab) -> Result<bool, Box<dyn std::error::Error>> {
 }
 
 fn do_next(tab: &Tab) -> Result<(), Box<dyn std::error::Error>> {
-    tab.find_elements(NEXT_BUTTON_SELECTOR)?[1].click()?;
+    tab.wait_for_elements(NEXT_BUTTON_SELECTOR)?[1].click()?;
     Ok(())
 }
 
@@ -95,12 +95,12 @@ fn jmg(
 
     // 최초 접근시 알림창 닫기
     if let Ok(button) = tab.wait_for_element(DONT_SEE_AGAIN_BUTTON_SELECTOR) {
-        sleep(Duration::from_millis(1500));
+        sleep(Duration::from_millis(2000));
         button.click()?;
     } else {
     }
 
-    sleep(Duration::from_millis(3500));
+    sleep(Duration::from_millis(5000));
 
     // 다음버튼 없을 경우 클릭해서 활성화
     if let Err(_error) = tab.find_element(NEXT_BUTTON_SELECTOR) {
@@ -111,13 +111,18 @@ fn jmg(
     download(&tab)?;
 
     loop {
+        //println!("1");
         if has_next(&tab)? {
+            //println!("2");
             let mut rng = rand::thread_rng();
             let second = delay + rng.gen_range(random_delay.0..random_delay.1);
-            println!("## {}초 딜레이중...", second);
+            //println!("## {}초 딜레이중...", second);
             sleep(Duration::from_secs(second as u64));
+            //println!("3");
             do_next(&tab)?;
+            //println!("4");
             download(&tab)?;
+            //println!("5");
         } else {
             println!("@@ 다운로드 종료");
             break;
