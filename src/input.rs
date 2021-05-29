@@ -2,6 +2,25 @@ use std::io::{self};
 
 use url::Url;
 
+pub fn input_open_browser() -> bool {
+    let mut buffer = String::new();
+
+    loop {
+        println!("## 브라우저를 여시겠어요? (y/n): ");
+        if io::stdin().read_line(&mut buffer).is_err() {
+            println!("!! 입력 오류입니다. 다시 입력해주세요.");
+            continue;
+        } else if buffer == "y" {
+            break true;
+        } else if buffer == "n" {
+            break false;
+        } else {
+            println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");
+            continue;
+        }
+    }
+}
+
 pub fn input_link() -> String {
     let mut buffer = String::new();
 

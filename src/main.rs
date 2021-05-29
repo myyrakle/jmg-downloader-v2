@@ -3,6 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 
 use std::path::Path;
+use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -77,10 +78,11 @@ fn jmg(
     link: String,
     delay: i32,
     random_delay: (i32, i32),
+    open_browser: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 브라우저 생성 옵션
     let browser_option = LaunchOptionsBuilder::default()
-        .headless(true)
+        .headless(!open_browser)
         .window_size(Some((1600, 1000)))
         .build()?;
 
@@ -111,18 +113,16 @@ fn jmg(
     download(&tab)?;
 
     loop {
-        //println!("1");
         if has_next(&tab)? {
-            //println!("2");
             let mut rng = rand::thread_rng();
             let second = delay + rng.gen_range(random_delay.0..random_delay.1);
-            //println!("## {}초 딜레이중...", second);
+            println!("## {}초 딜레이중...", second);
             sleep(Duration::from_secs(second as u64));
-            //println!("3");
+            // An error has occurred. Normal operation if sleep is not used
+            tab.wait_for_elements(NEXT_BUTTON_SELECTOR)?[1].click()?;
             do_next(&tab)?;
-            //println!("4");
             download(&tab)?;
-            //println!("5");
+            break;
         } else {
             println!("@@ 다운로드 종료");
             break;
@@ -133,11 +133,12 @@ fn jmg(
 }
 
 fn main() {
+    let open_browser = input_open_browser();
     let link = input_link();
     let delay = input_delay();
     let random_delay = input_random_delay();
 
-    match jmg(link, delay, random_delay) {
+    match jmg(link, delay, random_delay, open_browser) {
         Ok(()) => {
             println!("@@ 작업 성공");
         }
@@ -145,4 +146,6 @@ fn main() {
             println!("@@ 실패. => {:?}", error);
         }
     }
+
+    let _ = Command::new("pause").status();
 }
