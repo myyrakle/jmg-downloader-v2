@@ -7,7 +7,7 @@ use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
-use headless_chrome::{Browser, Element, LaunchOptionsBuilder, Tab};
+use headless_chrome::{util::Wait, Browser, Element, LaunchOptionsBuilder, Tab};
 use rand::Rng;
 use url::Url;
 
@@ -117,9 +117,8 @@ fn jmg(
             let mut rng = rand::thread_rng();
             let second = delay + rng.gen_range(random_delay.0..random_delay.1);
             println!("## {}초 딜레이중...", second);
-            sleep(Duration::from_secs(second as u64));
-            // An error has occurred. Normal operation if sleep is not used
-            tab.wait_for_elements(NEXT_BUTTON_SELECTOR)?[1].click()?;
+            Wait::with_sleep(Duration::from_secs(second as u64));
+            //sleep(Duration::from_secs(second as u64));
             do_next(&tab)?;
             download(&tab)?;
             break;
