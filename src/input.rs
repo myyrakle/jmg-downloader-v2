@@ -10,9 +10,9 @@ pub fn input_open_browser() -> bool {
         if io::stdin().read_line(&mut buffer).is_err() {
             println!("!! 입력 오류입니다. 다시 입력해주세요.");
             continue;
-        } else if buffer == "y" {
+        } else if buffer.trim() == "y" {
             break true;
-        } else if buffer == "n" {
+        } else if buffer.trim() == "n" {
             break false;
         } else {
             println!("!! 잘못된 입력 형식입니다. 다시 입력해주세요.");

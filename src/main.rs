@@ -8,6 +8,7 @@ use rand::Rng;
 mod lib;
 use lib::*;
 
+// 메인 다운로드 로직
 fn jmg(
     link: String,
     delay: i32,
